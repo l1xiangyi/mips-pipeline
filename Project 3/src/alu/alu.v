@@ -127,17 +127,6 @@ module alu(
                         if (alu_result[31])
                             flags_reg[1] = 1'b1;
                     end
-                    // 6'b000000: begin
-                    //     case(shamt)
-                    //         5'b00000: alu_result = regA << shamt; // sll
-                    //         5'b00001: alu_result = regA << shamt; // sllv
-                    //         5'b00010: alu_result = regA >> shamt; // srl
-                    //         5'b00011: alu_result = regA >> shamt; // srlv
-                    //         5'b00100: alu_result = $signed(regA) >>> shamt; // sra
-                    //         5'b00101: alu_result = $signed(regA) >>> shamt; // srav
-                    //         default: alu_result = 32'h00000000;
-                    //     endcase
-                    // end
                     6'b000000: begin // sll
                         reg0 = instruction[10:6];
                         if (instruction[20:16] == 5'b00000)
@@ -191,12 +180,10 @@ module alu(
                 end
             endcase
         flags_reg[2] = (alu_result == 0) ? 1'b1 : 1'b0;
-        // alu_flags = (alu_result == 0) ? 3'b100 : (alu_result[31]) ? 3'b001 : 3'b000;
     end
 
     always @(alu_result or alu_flags) begin
         result_reg <= alu_result;
-        // flags_reg <= alu_flags;
     end
 
     assign result = result_reg;
