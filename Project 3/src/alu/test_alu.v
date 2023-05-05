@@ -15,17 +15,15 @@ task test_bench;
     input[31:0] regA_t, regB_t;
     input[31:0] result_t;
     input[2:0] flags_t;
-    begin
-        instruction = instruction_t;
-        regA = regA_t;
-        regB = regB_t;
-        #10
-        $write("%s, %b, %h, %h, %h, %h, %h, %b, ", operation, instruction_t, regA_t, regB_t, testalu.opcode, testalu.funct, result, flags);
-        if(result === result_t && flags === flags_t)
-            $display("PASS");
-        else
-            $display("WRONG");       
-    end
+    instruction = instruction_t;
+    regA = regA_t;
+    regB = regB_t;
+    #10
+    $write("%s, %b, %h, %h, %h, %h, %h, %b, ", operation, instruction_t, regA_t, regB_t, testalu.opcode, testalu.funct, result, flags);
+    if(result === result_t && flags === flags_t)
+        $display("PASS");
+    else
+        $display("WRONG");
 endtask
 
 initial begin
