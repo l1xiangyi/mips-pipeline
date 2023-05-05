@@ -43,9 +43,7 @@ module alu(
     reg[4:0] rs;
     reg[4:0] rt;
 
-    
-
-
+    reg[31:0] reg0;
 
     always @(opcode or funct or regA or regB or imm_ext or shamt) begin
         flags_reg = 3'b000;
@@ -65,8 +63,20 @@ module alu(
             6'b001100: alu_result = regA & imm_ext; // andi
             6'b001101: alu_result = regA | imm_ext; // ori
             6'b001110: alu_result = regA ^ imm_ext; // xori
-            6'b100011: alu_result = regA + imm_ext; // lw
-            6'b101011: alu_result = regA + imm_ext; // sw
+            6'b100011: begin // alu_result = regA + imm_ext; // lw
+                reg0 = $signed(instruction[15:0]);
+                if(instruction[25:21] == 5'b00000)
+                    alu_result = $signed(regA) + $signed(reg0);
+                if(instruction[25:21] == 5'b00001)
+                    alu_result = $signed(regB) + $signed(reg0);
+            end
+            6'b101011: begin // alu_result = regA + imm_ext; // sw
+                reg0 = $signed(instruction[15:0]);
+                if(instruction[25:21] == 5'b00000)
+                    alu_result = $signed(regA) + $signed(reg0);
+                if(instruction[25:21] == 5'b00001)
+                    alu_result = $signed(regB) + $signed(reg0);
+            end
             6'b000100: begin // beq
                     alu_result = regA - regB;
                     if (alu_result == 32'h00000000)
@@ -77,8 +87,17 @@ module alu(
                     if (alu_result != 32'h00000000)
                         flags_reg[2] = 1'b1;
                 end
-            6'b001010: alu_result = regA < regB ? 32'h00000001 : 32'h00000000; // slti
-            6'b001011: alu_result = regA < imm_ext ? 32'h00000001 : 32'h00000000; // sltiu
+            6'b001010: begin // slti
+                alu_result = $signed(regA) < $signed(imm_ext) ? 32'h00000001 : 32'h00000000;
+                // alu_result = regA;
+                if (alu_result[31])
+                    flags_reg[1] = 1'b1;
+            end
+            6'b001011: begin // sltiu
+                alu_result = regA < imm_ext ? 32'h00000001 : 32'h00000000;
+                if (alu_result[31])
+                    flags_reg[1] = 1'b1;
+            end
             default: begin
                 case(funct)
                     6'b100000: begin // add
@@ -102,32 +121,71 @@ module alu(
                             if (alu_result[31])
                                 flags_reg[1] = 1'b1;
                         end
-                    6'b101001: begin // slti
-                            alu_result = regA < imm_ext ? 32'h00000001 : 32'h00000000;
-                            if (alu_result[31])
-                                flags_reg[1] = 1'b1;
-                        end
-                    6'b101100: begin // sltiu
-                        alu_result = regA < imm_ext ? 32'h00000001 : 32'h00000000;
-                        if (alu_result[31])
-                            flags_reg[1] = 1'b1;
-                    end
-                    6'b101101: begin // sltu
+
+                    6'b101011: begin // sltu
                         alu_result = regA < regB ? 32'h00000001 : 32'h00000000;
                         if (alu_result[31])
                             flags_reg[1] = 1'b1;
                     end
-                    6'b000000: begin
-                        case(shamt)
-                            5'b00000: alu_result = regA << shamt; // sll
-                            5'b00001: alu_result = regA << shamt; // sllv
-                            5'b00010: alu_result = regA >> shamt; // srl
-                            5'b00011: alu_result = regA >> shamt; // srlv
-                            5'b00100: alu_result = $signed(regA) >>> shamt; // sra
-                            5'b00101: alu_result = $signed(regA) >>> shamt; // srav
-                            default: alu_result = 32'h00000000;
-                        endcase
+                    // 6'b000000: begin
+                    //     case(shamt)
+                    //         5'b00000: alu_result = regA << shamt; // sll
+                    //         5'b00001: alu_result = regA << shamt; // sllv
+                    //         5'b00010: alu_result = regA >> shamt; // srl
+                    //         5'b00011: alu_result = regA >> shamt; // srlv
+                    //         5'b00100: alu_result = $signed(regA) >>> shamt; // sra
+                    //         5'b00101: alu_result = $signed(regA) >>> shamt; // srav
+                    //         default: alu_result = 32'h00000000;
+                    //     endcase
+                    // end
+                    6'b000000: begin // sll
+                        reg0 = instruction[10:6];
+                        if (instruction[20:16] == 5'b00000)
+                            alu_result = regA << reg0;
+                        if (instruction[20:16] == 5'b00001)
+                            alu_result = regB << reg0;
                     end
+                    6'b000100: begin // sllv
+                        if (instruction[20:16] == 5'b00000)
+                            alu_result = regA << regB;
+                        if (instruction[20:16] == 5'b00001)
+                            alu_result = regB << regA;
+                    end
+                    6'b000110: begin // srlv
+                        if (instruction[20:16] == 5'b00000)
+                            alu_result = regA >> regB;
+                        if (instruction[20:16] == 5'b00001)
+                            alu_result = regB >> regA;
+                    end
+
+                    6'b000010: begin // srl
+                        reg0 = instruction[10:6];
+                        if (instruction[20:16] == 5'b00000)
+                            alu_result = regA >> reg0;
+                        if (instruction[20:16] == 5'b00001)
+                            alu_result = regB >> reg0;
+                    end
+
+                    6'b000011: begin // sra
+                        reg0 = instruction[10:6];
+                        if (instruction[20:16] == 5'b00000)
+                            alu_result = $signed(regA) >>> reg0;
+                        if (instruction[20:16] == 5'b00001)
+                            alu_result = $signed(regB) >>> reg0;
+                    end
+
+                    6'b000111: begin // srav
+                        if (instruction[20:16] == 5'b00000)
+                            alu_result = $signed(regA) >>> regB;
+                        if (instruction[20:16] == 5'b00001)
+                            alu_result = $signed(regB) >>> regA;
+                    end
+
+
+
+
+
+
                     default: alu_result = 32'h00000000;
                 endcase
                 end
