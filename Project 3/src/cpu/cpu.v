@@ -97,6 +97,7 @@ endmodule
 
 module EX_stage
 (
+    input CLOCK,
     input [95:0] ID_EX,
     output reg [63:0] EX_MEM
 );
@@ -107,7 +108,7 @@ module EX_stage
 
     // Control Unit
     reg [2:0] aluOp;
-    always @(*) begin
+    always @(posedge CLOCK) begin
         case (ID_EX[31:26])
             6'b000000: aluOp = 3'b000; // R-type instructions
             6'b001000: aluOp = 3'b001; // addi
@@ -121,7 +122,7 @@ module EX_stage
     end
 
     // ALU Control
-    always @(*) begin
+    always @(posedge CLOCK) begin
         if (aluOp == 3'b000) begin
             case (ID_EX[5:0])
                 6'b100000: alu_control = 3'b000; // add
@@ -145,7 +146,7 @@ module EX_stage
 
     // Shifting instructions
     reg [31:0] shift_result;
-    always @(*) begin
+    always @(posedge CLOCK) begin
         case (ID_EX[5:0])
             6'b000000: shift_result = ID_EX[63:32] << ID_EX[10:6]; // sll
             6'b000010: shift_result = ID_EX[63:32] >> ID_EX[10:6]; // srl
@@ -159,7 +160,7 @@ module EX_stage
 
     // Choose between ALU result and shift result
     reg [31:0] final_result;
-    always @(*) begin
+    always @(posedge CLOCK) begin
         if (ID_EX[5:0] == 6'b000000 || ID_EX[5:0] == 6'b000010 || ID_EX[5:0] == 6'b000011 ||
             ID_EX[5:0] == 6'b000100 || ID_EX[5:0] == 6'b000110 || ID_EX[5:0] == 6'b000111) begin
             final_result = shift_result;
@@ -169,7 +170,7 @@ module EX_stage
     end
 
     // Output to EX_MEM
-    always @(*) begin
+    always @(posedge CLOCK) begin
         EX_MEM[31:0] = final_result;
         EX_MEM[63:32] = ID_EX[94:63];
     end
@@ -178,6 +179,7 @@ endmodule
 
 module MEM_stage
 (
+    input CLOCK,
     input [63:0] EX_MEM,
     input [31:0] data_mem_data,
     output reg [95:0] MEM_WB
@@ -191,7 +193,7 @@ module MEM_stage
 
     // Memory read or write
     reg [31:0] mem_data;
-    always @(*) begin
+    always @(posedge CLOCK) begin
         if (MemRead) begin
             mem_data = data_mem_data;
         end else if (MemWrite) begin
@@ -202,7 +204,7 @@ module MEM_stage
     end
 
     // Output to MEM_WB
-    always @(*) begin
+    always @(posedge CLOCK) begin
         MEM_WB[31:0] = (MemtoReg) ? mem_data : EX_MEM[31:0];
         MEM_WB[63:32] = EX_MEM[58:32];
         MEM_WB[95:64] = EX_MEM[31:0];
@@ -212,6 +214,7 @@ endmodule
 module WB_stage
 (
     input [95:0] MEM_WB,
+    input CLOCK,
     output reg [31:0] write_data,
     output reg [4:0] write_register,
     output reg RegWrite
@@ -225,7 +228,7 @@ module WB_stage
     wire RegWrite_in = MEM_WB[61];
 
     // Choose between ALU result and memory data
-    always @(*) begin
+    always @(posedge CLOCK) begin
         if (MemtoReg) begin
             write_data = mem_data;
         end else begin
@@ -234,7 +237,7 @@ module WB_stage
     end
 
     // Choose the destination register
-    always @(*) begin
+    always @(posedge CLOCK) begin
         if (RegDst) begin
             write_register = MEM_WB[58:54];
         end else begin
@@ -243,7 +246,7 @@ module WB_stage
     end
 
     // Set RegWrite control signal
-    always @(*) begin
+    always @(posedge CLOCK) begin
         RegWrite = RegWrite_in;
     end
 endmodule
@@ -267,7 +270,7 @@ module CPU
     wire [31:0] data_mem_data;
     reg [31:0] data_mem_address;
     reg [64:0] data_mem_edit_serial;
-    
+    // $display(data_mem_data);
     MainMemory data_memory (
         .CLOCK(CLK), 
         .RESET(1'b0), 
@@ -300,17 +303,20 @@ module CPU
 
     // Stage 3: Execute (EX)
     EX_stage EX_stage_inst (
+        .CLOCK(CLK),
         .ID_EX(ID_EX), 
         .EX_MEM(EX_MEM));
 
     // Stage 4: Memory Access (MEM)
     MEM_stage MEM_stage_inst (
+        .CLOCK(CLK),
         .EX_MEM(EX_MEM), 
         .data_mem_data(data_mem_data), 
         .MEM_WB(MEM_WB));
 
     // Stage 5: Write Back (WB)
     WB_stage WB_stage_inst (
+        .CLOCK(CLK),
         .MEM_WB(MEM_WB), 
         .write_data(write_data), 
         .RegWrite(write_reg));

@@ -29,6 +29,7 @@ module test_cpu;
 
     if (file) begin
         for (i = 0; i < 512; i = i + 1) begin
+            // $display(cpu_inst.instruction_ram.RAM[i]);
             if (!$feof(file)) begin
                 $fgets(line, file);
                 $sscanf(line, "%b", cpu_inst.instruction_ram.RAM[i]);
