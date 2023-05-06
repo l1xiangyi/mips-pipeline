@@ -217,7 +217,7 @@ module WB_stage
     input CLOCK,
     output reg [31:0] write_data,
     output reg [4:0] write_register,
-    output reg RegWrite
+    output RegWrite
 );
 
     // Extract control signals and data from MEM_WB
@@ -225,7 +225,6 @@ module WB_stage
     wire [31:0] mem_data = MEM_WB[95:64];
     wire RegDst = MEM_WB[63];
     wire MemtoReg = MEM_WB[62];
-    wire RegWrite_in = MEM_WB[61];
 
     // Choose between ALU result and memory data
     always @(posedge CLOCK) begin
@@ -245,10 +244,8 @@ module WB_stage
         end
     end
 
-    // Set RegWrite control signal
-    always @(posedge CLOCK) begin
-        RegWrite = RegWrite_in;
-    end
+    assign RegWrite = MEM_WB[61];
+
 endmodule
 
 module CPU
@@ -259,6 +256,7 @@ module CPU
     wire [31:0] instruction;
     reg [31:0] pc = 0;
     wire [31:0] fetch_address = pc >> 2;
+    reg [31:0] register_file [0:31];
     InstructionRAM instruction_ram (
         .CLOCK(CLK), 
         .RESET(1'b0), 
@@ -315,15 +313,24 @@ module CPU
         .MEM_WB(MEM_WB));
 
     // Stage 5: Write Back (WB)
+    reg RegWrite;
     WB_stage WB_stage_inst (
         .CLOCK(CLK),
         .MEM_WB(MEM_WB), 
-        .write_data(write_data), 
-        .RegWrite(write_reg));
+        .write_data(write_data),
+        .write_register(write_reg),
+        .RegWrite(RegWrite));
 
     // Connect Data Memory to the MEM stage
     always @(posedge CLK) begin
         data_mem_address <= EX_MEM[31:0];
         data_mem_edit_serial <= {EX_MEM[63], EX_MEM[62:31]};
+    end
+
+    // Write to register file
+    always @(posedge CLK) begin
+        if (RegWrite) begin
+            register_file[write_reg] <= write_data;
+        end
     end
 endmodule
