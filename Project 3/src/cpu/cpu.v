@@ -4,43 +4,6 @@
 `include "MainMemory.v"
 `include "alu.v"
 
-module InstructionRAMWrapper
-(
-    // Inputs
-    input CLOCK, // clock
-    input RESET, // reset
-    input ENABLE,
-    input [31:0] FETCH_ADDRESS,
-    // Outputs
-    output [31:0] DATA
-);
-
-    reg [31:0] memory [0:63]; // Assuming 64 instructions max
-
-    InstructionRAM instruction_ram (
-        .CLOCK(CLOCK),
-        .RESET(RESET),
-        .ENABLE(ENABLE),
-        .FETCH_ADDRESS(FETCH_ADDRESS),
-        .DATA(DATA)
-    );
-
-    // Initialize memory
-    task initialize_memory;
-        input [31:0] code;
-        input integer index;
-
-        begin
-            memory[index] = code;
-        end
-    endtask
-
-    // Connect the internal memory to InstructionRAM
-    assign instruction_ram.memory = memory;
-
-endmodule
-
-
 module ForwardingUnit
 (
     input [4:0] rs,
@@ -68,6 +31,7 @@ endmodule
 
 module ID_stage
 (
+    input CLOCK,
     input [31:0] instruction,
     input [31:0] write_data,
     input [4:0] write_reg,
@@ -93,14 +57,16 @@ module ID_stage
     reg [31:0] regfile [31:0];
     wire [31:0] read_data1, read_data2;
 
-    always @(posedge CLK) begin
+    always @(posedge CLOCK) begin
         if (write_reg != 0) regfile[write_reg] <= write_data;
     end
 
-    always @(*) begin
-        read_data1 = regfile[rs];
-        read_data2 = regfile[rt];
-    end
+    assign read_data1 = regfile[rs];
+    assign read_data2 = regfile[rt];
+    // always @(*) begin
+    //     assign read_data1 = regfile[rs];
+    //     assign read_data2 = regfile[rt];
+    // end
 
     // Forwarding Unit
     wire [31:0] forwardA, forwardB;
@@ -133,7 +99,7 @@ module EX_stage
     output reg [63:0] EX_MEM
 );
 
-    wire [2:0] alu_control;
+    reg [2:0] alu_control;
     wire [31:0] alu_result;
     wire alu_zero;
 
@@ -176,7 +142,7 @@ module EX_stage
     alu my_alu (.alu_control(alu_control), .a(ID_EX[31:0]), .b(ID_EX[63:32]), .result(alu_result), .zero(alu_zero));
 
     // Shifting instructions
-    wire [31:0] shift_result;
+    reg [31:0] shift_result;
     always @(*) begin
         case (ID_EX[5:0])
             6'b000000: shift_result = ID_EX[63:32] << ID_EX[10:6]; // sll
@@ -289,13 +255,12 @@ module CPU
     wire [31:0] instruction;
     reg [31:0] pc = 0;
     wire [31:0] fetch_address = pc >> 2;
-    InstructionRAMWrapper instruction_ram (
-        .CLOCK(CLK),
-        .RESET(RESET),
-        .ENABLE(1'b1),
-        .FETCH_ADDRESS(pc_next)
-    );
-
+    InstructionRAM instruction_ram (
+        .CLOCK(CLK), 
+        .RESET(1'b0), 
+        .ENABLE(1'b1), 
+        .FETCH_ADDRESS(fetch_address), 
+        .DATA(instruction));
 
     // Data Memory
     wire [31:0] data_mem_data;
@@ -325,25 +290,26 @@ module CPU
 
     // Stage 2: Instruction Decode (ID)
     ID_stage ID_stage_inst (
+        .CLOCK(CLK),
         .instruction(IF_ID), 
         .write_data(write_data), 
         .write_reg(write_reg), 
         .ID_EX(ID_EX));
 
     // Stage 3: Execute (EX)
-    EX_stage EX_stage_inst (.instruction(ID_EX), .EX_MEM(EX_MEM));
+    EX_stage EX_stage_inst (.ID_EX(ID_EX), .EX_MEM(EX_MEM));
 
     // Stage 4: Memory Access (MEM)
     MEM_stage MEM_stage_inst (
-        .instruction(EX_MEM), 
+        .EX_MEM(EX_MEM), 
         .data_mem_data(data_mem_data), 
         .MEM_WB(MEM_WB));
 
     // Stage 5: Write Back (WB)
     WB_stage WB_stage_inst (
-        .instruction(MEM_WB), 
+        .MEM_WB(MEM_WB), 
         .write_data(write_data), 
-        .write_reg(write_reg));
+        .RegWrite(write_reg));
 
     // Connect Data Memory to the MEM stage
     always @(posedge CLK) begin

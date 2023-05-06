@@ -1,61 +1,53 @@
 `include "cpu.v"
 `timescale 1ns/1ps
 
-module test_CPU();
+module test_cpu;
 
-reg CLK;
-reg RESET;
+  reg clk;
 
-CPU cpu_inst (
-    .CLK(CLK)
-);
+  // Instantiate CPU module
+  CPU cpu_inst (
+    .CLK(clk)
+  );
 
-// Clock generator
-always begin
-    #5 CLK = ~CLK;
-end
+  // Clock generation
+  always begin
+    #5 clk = ~clk;
+  end
 
-// Read machine code from file
-task load_machine_code;
+  // Read instructions from the machine_code1.txt file
+  initial begin
     integer file;
-    reg [31:0] code;
     integer i;
+    string line;
 
-    begin
-        file = $fopen("machine_code1.txt", "r");
-        if (file) begin
-            for (i = 0; i < 64; i = i + 1) begin
-                $fscanf(file, "%b\n", code);
-                cpu_inst.instruction_ram.initialize_memory(code, i);
-            end
-            $fclose(file);
+    file = $fopen("../../testcase/cpu_test/machine_code1.txt", "r");
+
+    if (file) begin
+      for (i = 0; i < 512; i = i + 1) begin
+        if (!$feof(file)) begin
+          $fgets(line, file);
+          $sscanf(line, "%b", cpu_inst.instruction_ram.RAM[i]);
         end else begin
-            $display("Error: Cannot open machine_code1.txt");
-            $finish;
+          cpu_inst.instruction_ram.RAM[i] = 32'b11111111111111111111111111111111; // End instruction
         end
+      end
+      $fclose(file);
+    end else begin
+      $display("Error: Cannot open machine_code1.txt");
+      $finish;
     end
-endtask
+  end
 
-initial begin
-    // Initialize signals
-    CLK = 0;
-    RESET = 1;
+  // Testbench stimulus
+  initial begin
+    clk = 0;
 
-    // Load machine code into instruction memory
-    load_machine_code;
+    // Simulate for 1000 time units
+    #1000;
 
-    // Reset and start the CPU
-    #10 RESET = 0;
-    #100000;
-
-    // Display the contents of the register file
-    $display("Register File Contents:");
-    for (integer i = 0; i < 32; i = i + 1) begin
-        $display("Register %0d: 32'h%08x", i, cpu_inst.register_file.registers[i]);
-    end
-
-    // Finish simulation
+    // Finish the simulation
     $finish;
-end
+  end
 
 endmodule
