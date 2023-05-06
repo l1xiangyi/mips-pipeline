@@ -35,7 +35,7 @@ module InstructionRAM
   reg [31:0] RAM [0:512-1];
 
   initial begin
-    $readmemb("instructions.bin",RAM);
+    $readmemb("CPU_instruction.bin", RAM);
   end
 
   always @(posedge CLOCK) begin : InstructionRAM_blockRamFile

@@ -63,14 +63,16 @@ module ID_stage
 
     assign read_data1 = regfile[rs];
     assign read_data2 = regfile[rt];
-    // always @(*) begin
-    //     assign read_data1 = regfile[rs];
-    //     assign read_data2 = regfile[rt];
-    // end
 
     // Forwarding Unit
     wire [31:0] forwardA, forwardB;
-    ForwardingUnit fwdUnit (.rs(rs), .rt(rt), .write_reg(write_reg), .write_data(write_data), .forwardA(forwardA), .forwardB(forwardB));
+    ForwardingUnit fwdUnit (
+        .rs(rs), 
+        .rt(rt), 
+        .write_reg(write_reg), 
+        .write_data(write_data), 
+        .forwardA(forwardA), 
+        .forwardB(forwardB));
 
     // Extend immediate value
     reg [31:0] extended_imm;
@@ -248,7 +250,6 @@ endmodule
 
 module CPU
 (
-    //input
       input CLK
 );
     // Instruction Memory
@@ -297,7 +298,9 @@ module CPU
         .ID_EX(ID_EX));
 
     // Stage 3: Execute (EX)
-    EX_stage EX_stage_inst (.ID_EX(ID_EX), .EX_MEM(EX_MEM));
+    EX_stage EX_stage_inst (
+        .ID_EX(ID_EX), 
+        .EX_MEM(EX_MEM));
 
     // Stage 4: Memory Access (MEM)
     MEM_stage MEM_stage_inst (
