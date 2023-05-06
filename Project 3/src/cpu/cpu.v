@@ -42,7 +42,6 @@ module ID_stage
     reg [5:0] opcode, funct;
     reg [15:0] immediate;
 
-    // Extract instruction fields
     always @(*) begin
         opcode = instruction[31:26];
         rs = instruction[25:21];
@@ -53,7 +52,6 @@ module ID_stage
         immediate = instruction[15:0];
     end
 
-    // Register File
     reg [31:0] regfile [31:0];
     wire [31:0] read_data1, read_data2;
 
@@ -64,7 +62,6 @@ module ID_stage
     assign read_data1 = regfile[rs];
     assign read_data2 = regfile[rt];
 
-    // Forwarding Unit
     wire [31:0] forwardA, forwardB;
     ForwardingUnit fwdUnit (
         .rs(rs), 
@@ -74,13 +71,11 @@ module ID_stage
         .forwardA(forwardA), 
         .forwardB(forwardB));
 
-    // Extend immediate value
     reg [31:0] extended_imm;
     always @(*) begin
         extended_imm = { {(16){immediate[15]}}, immediate};
     end
 
-    // Pass values to the next stage
     always @(*) begin
         ID_EX[31:26] = opcode;
         ID_EX[25:21] = rs;
@@ -106,11 +101,10 @@ module EX_stage
     wire [31:0] alu_result;
     wire alu_zero;
 
-    // Control Unit
     reg [2:0] aluOp;
     always @(posedge CLOCK) begin
         case (ID_EX[31:26])
-            6'b000000: aluOp = 3'b000; // R-type instructions
+            6'b000000: aluOp = 3'b000; // R-type
             6'b001000: aluOp = 3'b001; // addi
             6'b001001: aluOp = 3'b001; // addiu
             6'b001100: aluOp = 3'b010; // andi
@@ -121,7 +115,6 @@ module EX_stage
         endcase
     end
 
-    // ALU Control
     always @(posedge CLOCK) begin
         if (aluOp == 3'b000) begin
             case (ID_EX[5:0])
@@ -141,10 +134,8 @@ module EX_stage
         end
     end
 
-    // ALU
     alu my_alu (.alu_control(alu_control), .a(ID_EX[31:0]), .b(ID_EX[63:32]), .result(alu_result), .zero(alu_zero));
 
-    // Shifting instructions
     reg [31:0] shift_result;
     always @(posedge CLOCK) begin
         case (ID_EX[5:0])
@@ -158,7 +149,6 @@ module EX_stage
         endcase
     end
 
-    // Choose between ALU result and shift result
     reg [31:0] final_result;
     always @(posedge CLOCK) begin
         if (ID_EX[5:0] == 6'b000000 || ID_EX[5:0] == 6'b000010 || ID_EX[5:0] == 6'b000011 ||
@@ -185,13 +175,11 @@ module MEM_stage
     output reg [95:0] MEM_WB
 );
 
-    // Control signals
     wire RegWrite = EX_MEM[62];
     wire MemtoReg = EX_MEM[61];
     wire MemRead = EX_MEM[60];
     wire MemWrite = EX_MEM[59];
 
-    // Memory read or write
     reg [31:0] mem_data;
     always @(posedge CLOCK) begin
         if (MemRead) begin
@@ -203,7 +191,6 @@ module MEM_stage
         end
     end
 
-    // Output to MEM_WB
     always @(posedge CLOCK) begin
         MEM_WB[31:0] = (MemtoReg) ? mem_data : EX_MEM[31:0];
         MEM_WB[63:32] = EX_MEM[58:32];
@@ -220,13 +207,11 @@ module WB_stage
     output RegWrite
 );
 
-    // Extract control signals and data from MEM_WB
     wire [31:0] ALU_result = MEM_WB[31:0];
     wire [31:0] mem_data = MEM_WB[95:64];
     wire RegDst = MEM_WB[63];
     wire MemtoReg = MEM_WB[62];
 
-    // Choose between ALU result and memory data
     always @(posedge CLOCK) begin
         if (MemtoReg) begin
             write_data = mem_data;
@@ -235,7 +220,6 @@ module WB_stage
         end
     end
 
-    // Choose the destination register
     always @(posedge CLOCK) begin
         if (RegDst) begin
             write_register = MEM_WB[58:54];

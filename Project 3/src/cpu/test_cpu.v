@@ -5,7 +5,6 @@ module test_cpu;
 
   reg clk;
 
-  // Instantiate CPU module
   CPU cpu_inst (
     .CLK(clk)
   );
@@ -14,12 +13,10 @@ module test_cpu;
         $dumpfile("dump.vcd");
     end
 
-  // Clock generation
   always begin
     #5 clk = ~clk;
   end
 
-  // Read instructions from the machine_code1.txt file
   initial begin
     integer file;
     integer i;
@@ -44,16 +41,13 @@ module test_cpu;
     end
   end
 
-  // Testbench stimulus
   initial begin
     integer data_file;
     integer i;
     clk = 0;
 
-    // Simulate for 1000 time units
-    
+    #1000
 
-    // Write output to data.bin
     data_file = $fopen("data.bin", "wb");
     
     if (data_file) begin
@@ -66,7 +60,6 @@ module test_cpu;
         $display("Error: Cannot open data.bin");
     end  
 
-    // Finish the simulation
     $finish;
   end
 
