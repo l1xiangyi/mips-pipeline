@@ -27,11 +27,7 @@ module alu(
     output[31:0] result, 
     output[2:0] flags);
     
-
     reg[31:0] alu_result;
-    reg[2:0] alu_flags;
-    
-    reg[31:0] result_reg;
     reg[2:0] flags_reg;
 
     // Step 1: You should parsing the instruction;
@@ -40,9 +36,6 @@ module alu(
     reg[31:0] shamt;
     reg[15:0] imm;
     reg[31:0] imm_ext;
-    reg[4:0] rs;
-    reg[4:0] rt;
-
     reg[31:0] reg0;
 
     always @(opcode or funct or regA or regB or imm_ext or shamt) begin
@@ -52,7 +45,7 @@ module alu(
         imm = instruction[15:0];
         imm_ext = { {16{imm[15]}} , imm };
         shamt = instruction[10:6];
-
+        
         case(opcode)
             6'b001000: begin // addi
                     alu_result = regA + imm_ext;
@@ -121,7 +114,6 @@ module alu(
                             if (alu_result[31])
                                 flags_reg[1] = 1'b1;
                         end
-
                     6'b101011: begin // sltu
                         alu_result = regA < regB ? 32'h00000001 : 32'h00000000;
                         if (alu_result[31])
@@ -146,7 +138,6 @@ module alu(
                         if (instruction[20:16] == 5'b00001)
                             alu_result = regB >> regA;
                     end
-
                     6'b000010: begin // srl
                         reg0 = instruction[10:6];
                         if (instruction[20:16] == 5'b00000)
@@ -154,7 +145,6 @@ module alu(
                         if (instruction[20:16] == 5'b00001)
                             alu_result = regB >> reg0;
                     end
-
                     6'b000011: begin // sra
                         reg0 = instruction[10:6];
                         if (instruction[20:16] == 5'b00000)
@@ -162,19 +152,12 @@ module alu(
                         if (instruction[20:16] == 5'b00001)
                             alu_result = $signed(regB) >>> reg0;
                     end
-
                     6'b000111: begin // srav
                         if (instruction[20:16] == 5'b00000)
                             alu_result = $signed(regA) >>> regB;
                         if (instruction[20:16] == 5'b00001)
                             alu_result = $signed(regB) >>> regA;
                     end
-
-
-
-
-
-
                     default: alu_result = 32'h00000000;
                 endcase
                 end
@@ -182,11 +165,7 @@ module alu(
         flags_reg[2] = (alu_result == 0) ? 1'b1 : 1'b0;
     end
 
-    always @(alu_result or alu_flags) begin
-        result_reg <= alu_result;
-    end
-
-    assign result = result_reg;
+    assign result = alu_result;
     assign flags = flags_reg;
     
 // Step 2: You may fetch values in mem;
