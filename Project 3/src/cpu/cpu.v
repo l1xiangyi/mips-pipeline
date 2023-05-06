@@ -159,7 +159,6 @@ module EX_stage
         end
     end
 
-    // Output to EX_MEM
     always @(posedge CLOCK) begin
         EX_MEM[31:0] = final_result;
         EX_MEM[63:32] = ID_EX[94:63];
