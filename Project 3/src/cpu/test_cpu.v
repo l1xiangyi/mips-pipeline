@@ -22,11 +22,11 @@ task load_machine_code;
     integer i;
 
     begin
-        file = $fopen("../../testcase/cpu_test/machine_code1.txt", "r");
+        file = $fopen("machine_code1.txt", "r");
         if (file) begin
             for (i = 0; i < 64; i = i + 1) begin
                 $fscanf(file, "%b\n", code);
-                cpu_inst.instruction_ram.memory[i] = code;
+                cpu_inst.instruction_ram.initialize_memory(code, i);
             end
             $fclose(file);
         end else begin

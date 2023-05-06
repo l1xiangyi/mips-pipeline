@@ -4,6 +4,43 @@
 `include "MainMemory.v"
 `include "alu.v"
 
+module InstructionRAMWrapper
+(
+    // Inputs
+    input CLOCK, // clock
+    input RESET, // reset
+    input ENABLE,
+    input [31:0] FETCH_ADDRESS,
+    // Outputs
+    output [31:0] DATA
+);
+
+    reg [31:0] memory [0:63]; // Assuming 64 instructions max
+
+    InstructionRAM instruction_ram (
+        .CLOCK(CLOCK),
+        .RESET(RESET),
+        .ENABLE(ENABLE),
+        .FETCH_ADDRESS(FETCH_ADDRESS),
+        .DATA(DATA)
+    );
+
+    // Initialize memory
+    task initialize_memory;
+        input [31:0] code;
+        input integer index;
+
+        begin
+            memory[index] = code;
+        end
+    endtask
+
+    // Connect the internal memory to InstructionRAM
+    assign instruction_ram.memory = memory;
+
+endmodule
+
+
 module ForwardingUnit
 (
     input [4:0] rs,
@@ -243,9 +280,6 @@ module WB_stage
     end
 endmodule
 
-
-
-
 module CPU
 (
     //input
@@ -255,12 +289,13 @@ module CPU
     wire [31:0] instruction;
     reg [31:0] pc = 0;
     wire [31:0] fetch_address = pc >> 2;
-    InstructionRAM instruction_ram (
-        .CLOCK(CLK), 
-        .RESET(1'b0), 
-        .ENABLE(1'b1), 
-        .FETCH_ADDRESS(fetch_address), 
-        .DATA(instruction));
+    InstructionRAMWrapper instruction_ram (
+        .CLOCK(CLK),
+        .RESET(RESET),
+        .ENABLE(1'b1),
+        .FETCH_ADDRESS(pc_next)
+    );
+
 
     // Data Memory
     wire [31:0] data_mem_data;
