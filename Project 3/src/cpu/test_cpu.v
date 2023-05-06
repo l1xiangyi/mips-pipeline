@@ -10,6 +10,10 @@ module test_cpu;
     .CLK(clk)
   );
 
+    initial begin
+        $dumpfile("dump.vcd");
+    end
+
   // Clock generation
   always begin
     #5 clk = ~clk;
@@ -46,12 +50,14 @@ module test_cpu;
     clk = 0;
 
     // Simulate for 1000 time units
-    #5000;
+    
 
     // Write output to data.bin
     data_file = $fopen("data.bin", "wb");
+    
     if (data_file) begin
         for (i = 0; i < 512; i = i + 1) begin
+            // $display(cpu_inst.data_memory.DATA_RAM[i]);
             $fwrite(data_file, "%b\n", cpu_inst.data_memory.DATA_RAM[i]);
         end
         $fclose(data_file);
@@ -62,5 +68,7 @@ module test_cpu;
     // Finish the simulation
     $finish;
   end
+
+
 
 endmodule

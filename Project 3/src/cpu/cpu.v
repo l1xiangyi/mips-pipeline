@@ -267,6 +267,7 @@ module CPU
     wire [31:0] data_mem_data;
     reg [31:0] data_mem_address;
     reg [64:0] data_mem_edit_serial;
+    
     MainMemory data_memory (
         .CLOCK(CLK), 
         .RESET(1'b0), 
